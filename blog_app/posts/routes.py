@@ -1,5 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
+from datetime import datetime, timezone
 from typing import List
 from database import get_db
 from blog_app.users.dependencies import verify_access_token, oauth2_scheme
@@ -9,58 +11,81 @@ from blog_app.users.models import User
 router = APIRouter()
 
 # Helper function to get the current user
-def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> User:
+async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)) -> User:
     payload = verify_access_token(token)
     if not payload:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token")
 
     username = payload.get("sub")
-    user = db.query(User).filter(User.username == username).first()
+    result = await db.execute(select(User).filter(User.username == username))
+    user = result.scalars().first()
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     return user
 
-# 1. Post a blog
+# 1. Post a blog (async)
 @router.post("/", response_model=schemas.PostResponse)
-def create_post(post: schemas.PostCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    new_post = models.Post(user_id=current_user.id, title=post.title, content=post.content)
+async def create_post(
+    post: schemas.PostCreate, 
+    db: AsyncSession = Depends(get_db), 
+    current_user: User = Depends(get_current_user)
+):
+    # Create timezone-aware datetime, then convert it to naive by removing the timezone info
+    created_at = datetime.now(timezone.utc).replace(tzinfo=None)  # Convert to naive
+
+    # Create new post with naive created_at datetime
+    new_post = models.Post(
+        user_id=current_user.id,
+        title=post.title,
+        content=post.content,
+        created_at=created_at  # Pass naive datetime
+    )
+
+    # Add the new post asynchronously
     db.add(new_post)
-    db.commit()
-    db.refresh(new_post)
+    await db.commit()  # Commit asynchronously
+    await db.refresh(new_post)  # Refresh asynchronously
     return new_post
 
 # 2. Update a blog
 @router.put("/{post_id}", response_model=schemas.PostResponse)
-def update_post(post_id: int, post: schemas.PostUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    db_post = db.query(models.Post).filter(models.Post.id == post_id, models.Post.user_id == current_user.id).first()
+async def update_post(post_id: int, post: schemas.PostUpdate, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+    result = await db.execute(select(models.Post).filter(models.Post.id == post_id, models.Post.user_id == current_user.id))
+    db_post = result.scalars().first()
     if not db_post:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post not found or not authorized")
+    
     if post.title:
         db_post.title = post.title
     if post.content:
         db_post.content = post.content
-    db.commit()
-    db.refresh(db_post)
+
+    await db.commit()  # Use async commit
+    await db.refresh(db_post)  # Use async refresh
     return db_post
 
 # 3. Delete a blog
 @router.delete("/{post_id}")
-def delete_post(post_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    db_post = db.query(models.Post).filter(models.Post.id == post_id, models.Post.user_id == current_user.id).first()
+async def delete_post(post_id: int, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+    result = await db.execute(select(models.Post).filter(models.Post.id == post_id, models.Post.user_id == current_user.id))
+    db_post = result.scalars().first()
     if not db_post:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post not found or not authorized")
-    db.delete(db_post)
-    db.commit()
+    
+    await db.delete(db_post)  # Use async delete
+    await db.commit()  # Use async commit
     return {"message": "Post deleted successfully"}
 
 # 4. See all blogs
 @router.get("/", response_model=List[schemas.PostResponse])
-def get_all_posts(db: Session = Depends(get_db)):
-    posts = db.query(models.Post).all()
+async def get_all_posts(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(models.Post))
+    posts = result.scalars().all()  # Fetch all posts asynchronously
     return posts
 
 # 5. See all blogs of the current user
 @router.get("/my-posts", response_model=List[schemas.PostResponse])
-def get_my_posts(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    posts = db.query(models.Post).filter(models.Post.user_id == current_user.id).all()
+async def get_my_posts(db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+    result = await db.execute(select(models.Post).filter(models.Post.user_id == current_user.id))
+    posts = result.scalars().all()  # Fetch user's posts asynchronously
     return posts
