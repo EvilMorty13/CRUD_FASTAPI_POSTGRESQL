@@ -25,7 +25,7 @@ async def register_user(user: schemas.UserCreate, db: AsyncSession = Depends(get
         raise HTTPException(status_code=400, detail="Email already registered")
     
     hashed_password = dependencies.hash_password(user.password)
-    new_user = models.User(username=user.username, email=user.email, hashed_password=hashed_password)
+    new_user = models.User(username=user.username, email=user.email, hashed_password=hashed_password,age=user.age)
     db.add(new_user)
     await db.commit()  # Use async commit
     await db.refresh(new_user)  # Use async refresh

@@ -9,6 +9,7 @@ class User(Base):
     username = Column(String, unique=True, index=True, nullable=False)
     email = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
+    age = Column(Integer, nullable=True)  # Add the new age attribute
     
     posts = relationship("Post", back_populates="user")
 
