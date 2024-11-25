@@ -7,6 +7,7 @@ from database import get_db
 from blog_app.users.dependencies import verify_access_token, oauth2_scheme
 from blog_app.posts import models, schemas
 from blog_app.users.models import User
+from blog_app.tasks import send_email 
 
 router = APIRouter()
 
@@ -30,21 +31,25 @@ async def create_post(
     db: AsyncSession = Depends(get_db), 
     current_user: User = Depends(get_current_user)
 ):
-    # Create timezone-aware datetime, then convert it to naive by removing the timezone info
-    created_at = datetime.now(timezone.utc).replace(tzinfo=None)  # Convert to naive
+    created_at = datetime.now(timezone.utc).replace(tzinfo=None)
 
-    # Create new post with naive created_at datetime
     new_post = models.Post(
         user_id=current_user.id,
         title=post.title,
         content=post.content,
-        created_at=created_at  # Pass naive datetime
+        created_at=created_at
     )
 
-    # Add the new post asynchronously
     db.add(new_post)
-    await db.commit()  # Commit asynchronously
-    await db.refresh(new_post)  # Refresh asynchronously
+    await db.commit()
+    await db.refresh(new_post)
+
+    send_email(
+        subject="New Post Created",
+        recipient=current_user.username,  # Assuming username is unique for demo
+        body=f"Dear {current_user.username},\n\nYou created a post titled '{new_post.title}'."
+    )
+
     return new_post
 
 # 2. Update a blog
