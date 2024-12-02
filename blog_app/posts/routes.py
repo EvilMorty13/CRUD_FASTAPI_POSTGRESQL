@@ -7,7 +7,7 @@ from database import get_db
 from blog_app.users.dependencies import verify_access_token, oauth2_scheme
 from blog_app.posts import models, schemas
 from blog_app.users.models import User
-from blog_app.tasks import send_email 
+from celery_app_worker import send_email 
 
 router = APIRouter()
 
@@ -44,10 +44,13 @@ async def create_post(
     await db.commit()
     await db.refresh(new_post)
 
-    send_email(
-        subject="New Post Created",
-        recipient=current_user.username,  # Assuming username is unique for demo
-        body=f"Dear {current_user.username},\n\nYou created a post titled '{new_post.title}'."
+
+    send_email.apply_async(
+        kwargs={
+            "subject": "New Post Created",
+            "recipient": current_user.email,
+            "body": f"Dear {current_user.username},\nYou created a post titled '{new_post.title}'."
+        }
     )
 
     return new_post
@@ -67,6 +70,15 @@ async def update_post(post_id: int, post: schemas.PostUpdate, db: AsyncSession =
 
     await db.commit()  # Use async commit
     await db.refresh(db_post)  # Use async refresh
+    
+    send_email.apply_async(
+        kwargs={
+            "subject": "Post Updated",
+            "recipient": current_user.email,
+            "body": f"Dear {current_user.username},\nYou updated a post titled '{db_post.title}'."
+        }
+    )
+        
     return db_post
 
 # 3. Delete a blog
