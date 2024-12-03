@@ -39,6 +39,10 @@ blog-project/
 │   │   ├── models.py       # Post-related database schema
 │   │   ├── routes.py       # Post-related API routes
 │   │   ├── schemas.py      # Pydantic schemas for post data validation
+│   ├── comments/           # Submodule for comment management
+│   │   ├── models.py       # Comment-related database schema
+│   │   ├── routes.py       # Comment-related API routes
+│   │   ├── schemas.py      # Pydantic schemas for comment data validation
 ├── .env                    # Environment variables file
 ├── alembic.ini             # Alembic configuration file
 ├── celery_app_worker       # Celery for sending email
@@ -128,6 +132,33 @@ Add database url in the project
    http://127.0.0.1:8000/posts/my-posts
    ```
 
+### Comment Endpoints
+
+- **Create Comment[POST]**
+    ```bash
+   http://127.0.0.1:8000/comments/
+   ```
+
+- **Update Comment[UPDATE]**
+    ```bash
+   http://127.0.0.1:8000/comments/
+   ```
+
+- **Update Comment[UPDATE]**
+    ```bash
+   http://127.0.0.1:8000/comments/{comment_id}/
+   ```
+
+- **Delete Comment[DELETE]**
+    ```bash
+   http://127.0.0.1:8000/comments/{comment_id}/
+   ```
+
+- **Get all comments[GET]**
+    ```bash
+   http://127.0.0.1:8000/comments/all_comments/
+   ```
+
 ## Authentication
 After login, a acces token will be generated.
    The lifetime of that token is 30 minutes. Use the access token to do things like posting,updating and deleting a blog.
@@ -150,51 +181,59 @@ Secret, Algorithm and Token lifetime are hidden using .env file. Make sure to ad
 ## Alembic Migration Setup
 
 - Initialize Alembic
-   ```
+   ```bash
    alembic init -t async alembic
    ```
 
 - Add changes in the model
 
 - Modify **env.py** file
-  ```
+  ```bash
   from database import Base # Import Base
   target_metadata = Base.metadata  # Replace with your metadata
   ```
 
 - Update **alembic.ini** file
-  ```
+  ```bash
   sqlalchemy.url = postgresql+asyncpg://username:password@localhost/dbname
   ```
 
 - Create Migration file
-  ```
+  ```bash
   alembic revision --autogenerate -m "file_name"
   ```
 
 - Go to the **versions/<migration_id>_file_name.py** file and update the upgrade & downgrade functions
 
 - Apply the migration
-  ```
+  ```bash
   alembic upgrade head
   ```
 
 - See migration history
-  ```
+  ```bash
   alembic history
   ```
 
 - Downgrade to the Previous Revision 
-  ```
+  ```bash
   alembic downgrade -1
   ```
 
 - Downgrade to the Specific Revision 
-  ```
+  ```bash
   alembic downgrade <revision_id>
   ```
 
 ## Celery
+
+- **Install Redis and add Broker & Backend**
+    ```bash
+   celery_app = Celery(
+      broker = os.getenv('REDIS_BROKER'),
+      backend = os.getenv('REDIS_BACKEND')
+   )
+   ```
 - **Run Celery Worker in a seperate terminal**
     ```bash
    celery -A celery_app_worker.celery_app worker --loglevel=info
@@ -210,13 +249,23 @@ Secret, Algorithm and Token lifetime are hidden using .env file. Make sure to ad
 
 - **Create an Image**
     ```bash
-   sudo docker build -t fastapi-postgres .
+   sudo docker build -t fastapi-postgres:<tag_name> .
    ```
 
 - **List of Images**
     ```bash
    sudo docker images
    ```
+
+- **Tag an Image**
+    ```bash
+   sudo docker tag fastapi-postgres:<tag_name> <your_dockerhub_username>/fastapi-postgres:<tag_name> 
+   ```   
+
+- **Push an Image**
+    ```bash
+   sudo docker push <your_dockerhub_username>/fastapi-postgres:<tag_name>
+   ```  
 
 - **Run the Docker Container**
     ```bash
@@ -262,6 +311,7 @@ Secret, Algorithm and Token lifetime are hidden using .env file. Make sure to ad
    ```bash
    sudo docker rmi <imgae_id>
    ```
+
 
 
 

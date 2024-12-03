@@ -12,4 +12,5 @@ class User(Base):
     age = Column(Integer, nullable=True)  # Add the new age attribute
     
     posts = relationship("Post", back_populates="user")
+    comments = relationship("Comment", back_populates="user")
 

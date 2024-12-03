@@ -4,6 +4,9 @@ from logging.config import fileConfig
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
+from blog_app.users.models import User
+from blog_app.posts.models import Post
+from blog_app.comments.models import Comment
 from database import Base
 from alembic import context
 
