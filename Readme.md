@@ -13,7 +13,10 @@
 
 
 ## Introduction
-This is is a blogging web application where users can register and then login using JWT authentication. Then create,read,update or delete blogs.
+This is is a blogging web application with the follwing features
+- Users can register and then login using JWT authentication. 
+- Create,read,update or delete blogs.
+- Create,read,update or delete comments on blogs.
 
 ## Prerequisite
 
@@ -135,11 +138,6 @@ Add database url in the project
 ### Comment Endpoints
 
 - **Create Comment[POST]**
-    ```bash
-   http://127.0.0.1:8000/comments/
-   ```
-
-- **Update Comment[UPDATE]**
     ```bash
    http://127.0.0.1:8000/comments/
    ```
